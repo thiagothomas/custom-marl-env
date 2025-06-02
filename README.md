@@ -67,25 +67,26 @@ episodes = 10_000       # Number of training episodes
 ## Project Structure
 
 ```
-├── team_goal_env.py    # Gymnasium environment implementation
-├── iql_agents.py       # Q-learning agents and controller
-├── main.py             # Training script and visualization
-├── renderer.py         # Pygame rendering for visualization
-└── pyproject.toml      # Poetry dependencies
+├── team_goal_env_simple.py    # Simplified environment with state discretization
+├── team_goal_env.py           # Original full-state environment
+├── team_goal_env_improved.py  # Alternative with relative observations
+├── iql_agents.py              # Q-learning agents and controller
+├── main.py                    # Training script and visualization
+├── renderer.py                # Pygame rendering for visualization
+├── analyze_behavior.py        # Tools for analyzing agent behavior
+├── compare_environments.py    # Environment comparison utilities
+├── test_behavior.py           # Testing learned behaviors
+└── pyproject.toml             # Poetry dependencies
 ```
 
 ## How It Works
 
-### Environment
-- Grid world with randomly placed agents and goals
-- Each team has specific colored goals to collect
+### Environment (Simplified Version)
+- 8x8 grid world divided into 2x2 regions (4 regions total)
+- Randomly placed agents and team-specific goals
+- Curriculum learning: starts with 1 goal per team, increases to 3
 - Episode ends when all goals are collected or max steps reached
-
-### Observations
-Each agent observes:
-- Its own position (x, y)
-- Its team ID
-- Positions of all goals (sorted for consistency)
+- Prevents column-sweeping behavior through state space reduction
 
 ### Actions
 - 0: Move up
@@ -93,25 +94,91 @@ Each agent observes:
 - 2: Move left
 - 3: Move right
 
-### Rewards
-- +10: Collecting a team goal
-- -0.1: Hitting a wall
-- -0.2: Colliding with another agent
-- -0.01: Time penalty per step
-- +0.5 × (distance_reduction): Moving closer to nearest goal
-
 ### Learning Algorithm
 - Independent Q-Learning with epsilon-greedy exploration
 - Linear epsilon decay from 1.0 to 0.01
 - Learning rate: 0.1, Discount factor: 0.95
 
+## Observation and Reward Structure
+
+### Observations (Simplified Environment)
+
+Each agent receives a 4-element observation vector:
+```
+[region_x, region_y, goal_direction, distance_category]
+```
+
+- **region_x, region_y**: The agent's current region (0 or 1 for each axis)
+  - The 8x8 grid is divided into 2x2 regions (4 regions total)
+  - Example: position (3,5) → region (0,1)
+
+- **goal_direction**: Direction to nearest team goal (0-7)
+  - 0 = East, 1 = NE, 2 = North, 3 = NW, 4 = West, 5 = SW, 6 = South, 7 = SE
+
+- **distance_category**: How far to nearest team goal
+  - 0 = Close (≤2 steps)
+  - 1 = Medium (3-5 steps)  
+  - 2 = Far (>5 steps)
+
+**Note**: Agents only observe their own team's goals, not the opponent's.
+
+### Reward Structure
+
+#### Individual Agent Rewards:
+
+1. **Goal Collection**:
+   - Collector: +50
+   - Teammates: +25 (50% sharing bonus)
+
+2. **Exploration**: +2 for visiting a new region
+
+3. **Proximity Bonuses**:
+   - +5 for being adjacent to a goal (distance = 1)
+   - +2 for being near a goal (distance = 2)
+   - -0.5 penalty for being far from all goals (distance > 6)
+
+4. **Movement Penalties**:
+   - Wall collision: -1.0
+   - Agent collision: -1.0
+   - Time penalty: -0.1 per step
+
+5. **Completion Bonus**: +(max_steps - steps_taken) × 0.5 when all goals collected
+
+#### Example Scenario:
+```
+Team 0 (Blue): Agents a, b
+Team 1 (Orange): Agents A, B
+
+If agent 'a' collects a blue goal:
+- Agent a: +50 (collector)
+- Agent b: +25 (teammate bonus)
+- Agents A, B: 0 (different team)
+
+If agent 'a' is adjacent to a blue goal:
+- Agent a: +5 - 0.1 = +4.9 net reward
+```
+
+### Curriculum Learning
+The environment gradually increases difficulty:
+- Starts with 1 goal per team
+- Every 100 episodes, evaluates performance
+- Increases up to 3 goals per team based on learning progress
+
+This design encourages:
+- **Exploration**: Bonuses prevent repetitive behavior
+- **Cooperation**: Shared rewards for team success
+- **Efficiency**: Time penalties reward quick solutions
+- **Smart Navigation**: Directional observations guide goal-seeking
+
 ## Customization
 
 ### Modify Rewards
-Edit `team_goal_env.py`:
-- Goal collection reward: line ~135
-- Collision penalties: lines ~88-90
-- Distance-based shaping: lines ~115-126
+Edit `team_goal_env_simple.py`:
+- Goal collection reward: line ~167
+- Exploration bonus: line ~139
+- Movement penalties: lines ~109-111
+- Proximity bonuses: lines ~150-155
+- Curriculum learning rate: line ~20
 
 ### Adjust Learning
 Edit `iql_agents.py`:

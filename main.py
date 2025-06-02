@@ -4,7 +4,7 @@ import pygame
 
 from iql_agents import IQLController
 from renderer import Renderer
-from team_goal_env import TeamGoalEnv
+from team_goal_env_simple import TeamGoalEnvSimple
 
 
 def smooth(y, window=50):
@@ -33,7 +33,7 @@ def main():
     smoothing_window = 100
     
     # Create environment and controller
-    env = TeamGoalEnv(grid_size=grid_size, n_agents_per_team=n_agents_per_team, max_steps=max_steps)
+    env = TeamGoalEnvSimple(grid_size=grid_size, n_agents_per_team=n_agents_per_team, max_steps=max_steps)
     controller = IQLController(env)
     
     # Pygame setup for visualization
