@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import pygame
+import pickle
+import os
 
 from iql_agents import IQLController
 from renderer import Renderer
@@ -55,6 +57,42 @@ def main():
     rewards_team0, rewards_team1, actions_history = controller.train(episodes=episodes, render=render_wrapper)
     
     pygame.quit()
+    
+    # Save Q-tables
+    print("\nSaving Q-tables...")
+    os.makedirs("saved_models", exist_ok=True)
+    
+    # Save Q-tables for each team
+    team0_qtables = []
+    team1_qtables = []
+    
+    for i, agent in enumerate(controller.agents):
+        # Convert defaultdict to regular dict for pickling
+        q_table_dict = dict(agent.q_table)
+        
+        if i < n_agents_per_team:
+            team0_qtables.append(q_table_dict)
+        else:
+            team1_qtables.append(q_table_dict)
+    
+    # Save team Q-tables
+    with open("saved_models/team0_qtables.pkl", "wb") as f:
+        pickle.dump(team0_qtables, f)
+    
+    with open("saved_models/team1_qtables.pkl", "wb") as f:
+        pickle.dump(team1_qtables, f)
+    
+    # Save environment parameters for evaluation
+    env_params = {
+        "grid_size": grid_size,
+        "n_agents_per_team": n_agents_per_team,
+        "max_steps": max_steps
+    }
+    
+    with open("saved_models/env_params.pkl", "wb") as f:
+        pickle.dump(env_params, f)
+    
+    print("Q-tables saved successfully!")
     
     # Plot team reward curves
     plt.figure(figsize=(10, 5))

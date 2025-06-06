@@ -1,5 +1,5 @@
 import pygame
-from team_goal_env import TeamGoalEnv
+from team_goal_env_simple import TeamGoalEnvSimple
 
 # Color scheme for visualization
 COLORS = {
@@ -20,7 +20,7 @@ class Renderer:
         self.margin = margin
         self.font = font
     
-    def render(self, env: TeamGoalEnv):
+    def render(self, env: TeamGoalEnvSimple):
         """Render the current environment state"""
         
         # Draw background and grid
